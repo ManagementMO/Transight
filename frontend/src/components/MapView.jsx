@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import SearchBar from './SearchBar';
 
-export default function MapView({ onRouteClick, historicalData, currentTime, isLoading }) {
+export default function MapView({ onRouteClick, historicalData, currentTime, isLoading, onStationSelect }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -265,10 +266,15 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="absolute top-0 bottom-0 left-0 right-0" />
-      
+
+      {/* Search Bar - Top Right */}
+      <div className="absolute top-4 right-16 z-10">
+        <SearchBar onStationSelect={onStationSelect} />
+      </div>
+
       {/* Loading indicator */}
       {isLoading && (
-        <div className="absolute top-4 left-4 bg-white rounded-xl shadow-soft-lg px-5 py-3 flex items-center space-x-3 animate-fade-in border border-blue-100">
+        <div className="absolute top-4 left-4 bg-white rounded-xl shadow-soft-lg px-5 py-3 flex items-center space-x-3 animate-fade-in border border-blue-100 z-10">
           <div className="relative">
             <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
             <div className="absolute inset-0 w-3 h-3 bg-blue-400 rounded-full animate-ping"></div>

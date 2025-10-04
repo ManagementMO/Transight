@@ -71,6 +71,20 @@ function App() {
     setSelectedRoute(null);
   };
 
+  const handleStationSelect = (stationData) => {
+    // When user searches for a station, show it in the sidebar
+    setSelectedRoute({
+      route: stationData.routes[0] || 'Multiple',
+      lat: stationData.lat,
+      lon: stationData.lon,
+      location: stationData.location,
+      delay: stationData.predictions?.[0]?.predicted_delay_minutes || 0,
+      incident: stationData.predictions?.[0]?.incident_type || 'Current Prediction',
+      predictions: stationData.predictions,
+      timestamp: stationData.timestamp
+    });
+  };
+
   return (
     <div style={{ height: '100vh', width: '100vw' }} className="bg-white flex flex-col overflow-hidden">
       {/* Header */}
@@ -84,6 +98,7 @@ function App() {
           historicalData={historicalData}
           currentTime={currentTime}
           isLoading={isLoading}
+          onStationSelect={handleStationSelect}
         />
 
         {/* Time Slider */}

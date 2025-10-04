@@ -8,6 +8,14 @@ export default function RouteSidebar({ route, onClose }) {
 
   useEffect(() => {
     const loadPredictions = async () => {
+      // If predictions are already provided (from search), use them
+      if (route.predictions) {
+        setPredictions({ predictions: route.predictions });
+        setIsLoading(false);
+        return;
+      }
+
+      // Otherwise fetch predictions
       setIsLoading(true);
       try {
         const data = await fetchPredictions(route.lat, route.lon, route.route);
