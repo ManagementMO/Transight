@@ -117,7 +117,7 @@ def geocode_with_stops(df, stops_df):
     df['cleaned_location'] = df['location'].apply(clean_location_string)
 
     # Geocoding with all strategies
-    stats = {'exact': 0, 'station': 0, 'intersection': 0, 'failed': 0}
+    stats = {'exact': 0, 'station': 0, 'intersection': 0, 'partial': 0, 'failed': 0}
 
     def get_coords(cleaned_loc):
         if not cleaned_loc:
@@ -157,6 +157,31 @@ def geocode_with_stops(df, stops_df):
                         stats['intersection'] += 1
                         return intersection_avg_dict[key]
 
+        # Strategy 4: Partial word match (for loops, garages, truncated names)
+        # Only if location has 2+ words to avoid false matches
+        loc_words = set(cleaned_loc.split())
+        if len(loc_words) >= 2:
+            best_match = None
+            best_score = 0
+
+            for stop_name, coords in exact_dict.items():
+                stop_words = set(stop_name.split())
+                # Count common words (excluding very common ones)
+                common_words = loc_words & stop_words - {'at', 'and', 'the', 'station', 'st', 'ave', 'rd'}
+
+                # Require at least 2 meaningful words in common
+                if len(common_words) >= 2:
+                    # Score = number of common words / total unique words
+                    score = len(common_words) / len(loc_words | stop_words)
+                    if score > best_score:
+                        best_score = score
+                        best_match = coords
+
+            # Only accept if score is high enough (50%+ overlap)
+            if best_match and best_score >= 0.5:
+                stats['partial'] += 1
+                return best_match['stop_lat'], best_match['stop_lon']
+
         stats['failed'] += 1
         return None, None
 
@@ -168,7 +193,7 @@ def geocode_with_stops(df, stops_df):
     matched_count = df['latitude'].notna().sum()
     total_count = len(df)
     print(f"-> Matched {matched_count}/{total_count} locations ({matched_count/total_count:.1%})")
-    print(f"   Exact: {stats['exact']}, Station: {stats['station']}, Intersection: {stats['intersection']}, Failed: {stats['failed']}")
+    print(f"   Exact: {stats['exact']}, Station: {stats['station']}, Intersection: {stats['intersection']}, Partial: {stats['partial']}, Failed: {stats['failed']}")
 
     return df.drop(columns=['cleaned_location'])
 
