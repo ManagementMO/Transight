@@ -1,7 +1,7 @@
 import pandas as pd
 import joblib
 
-df = pd.read_parquet('../dataAnalysis/geocoded_delays.parquet')
+df = pd.read_parquet('dataAnalysis/geocoded_delays.parquet')
 print(df.head())
 
 df['datetime'] = pd.to_datetime(df['datetime'])
