@@ -1,5 +1,5 @@
 feature,importance
-incident_avg_delay,5809
+incident_avg_delay,5808
 spatial_cell_avg_delay,3841
 route_frequency,3758
 minute,3726
@@ -58,10 +58,10 @@ quarter,7
 dir_e/b,7
 dir_eb,6
 day_Monday,6
-dir_S/b,4
+incident_Late Leaving Garage,4
 dir_n/b,4
+dir_S/b,4
 route_is_numeric,4
-incident_Late Leaving Garage,3
 dir_. E,0
 dir_1,0
 dir_10,0
