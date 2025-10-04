@@ -19,7 +19,7 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       style: 'mapbox://styles/mapbox/standard',
       center: [-79.3832, 43.6532], // Toronto coordinates [lng, lat]
       zoom: 11,
-      pitch: 45, // Tilt the map for 3D effect
+      pitch: 0, // Default birds eye view
       bearing: 0,
       attributionControl: true
     });
@@ -126,7 +126,7 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       }
     });
 
-    // Add points layer for interactivity
+    // Add points layer for interactivity with vibrant colors
     map.current.addLayer({
       id: 'delay-points',
       type: 'circle',
@@ -136,20 +136,23 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
           'interpolate',
           ['linear'],
           ['get', 'delay'],
-          0, 4,
-          30, 12
+          0, 5,
+          15, 8,
+          30, 14
         ],
         'circle-color': [
           'interpolate',
           ['linear'],
           ['get', 'delay'],
-          0, '#00ff00',
-          15, '#ffff00',
-          30, '#ff0000'
+          0, '#10b981',   // Vibrant green for low delays
+          10, '#fbbf24',  // Vibrant yellow for medium delays
+          20, '#f97316',  // Vibrant orange for high delays
+          30, '#dc2626'   // Vibrant red for severe delays
         ],
-        'circle-opacity': 0.8,
+        'circle-opacity': 0.9,
         'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff'
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-opacity': 1
       }
     });
 
@@ -213,20 +216,24 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       )}
 
       {/* Legend */}
-      <div className="absolute bottom-24 right-4 bg-white rounded-lg shadow-soft p-4">
+      <div className="absolute bottom-24 right-4 bg-white rounded-xl shadow-soft-lg p-5" style={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255, 255, 255, 0.95)' }}>
         <h4 className="text-sm font-semibold text-gray-900 mb-3">Delay Severity</h4>
         <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-full bg-green-500"></div>
-            <span className="text-xs text-gray-600">Low (0-10 min)</span>
+          <div className="flex items-center space-x-3">
+            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#10b981' }}></div>
+            <span className="text-xs text-gray-700 font-medium">Low (0-10 min)</span>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-            <span className="text-xs text-gray-600">Medium (10-20 min)</span>
+          <div className="flex items-center space-x-3">
+            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#fbbf24' }}></div>
+            <span className="text-xs text-gray-700 font-medium">Medium (10-20 min)</span>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-full bg-red-500"></div>
-            <span className="text-xs text-gray-600">High (20+ min)</span>
+          <div className="flex items-center space-x-3">
+            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#f97316' }}></div>
+            <span className="text-xs text-gray-700 font-medium">High (20-30 min)</span>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#dc2626' }}></div>
+            <span className="text-xs text-gray-700 font-medium">Severe (30+ min)</span>
           </div>
         </div>
       </div>
