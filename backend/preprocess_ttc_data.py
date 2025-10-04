@@ -88,11 +88,26 @@ def process_files():
     combined_df = pd.concat(all_dataframes, ignore_index=True)
 
     print("Performing final cleaning and feature engineering...")
-    
+
     # <<< IMPROVEMENT 3: Create a single, powerful datetime column >>>
     # First, handle potential non-string or None values in date/time columns
     combined_df['date'] = pd.to_datetime(combined_df['date'], errors='coerce').dt.date
-    combined_df['time'] = pd.to_datetime(combined_df['time'], format='%H:%M', errors='coerce').dt.time
+
+    # Handle time column which may already be time objects (2014-2016) or strings/datetime
+    from datetime import time as time_type
+    def safe_time_convert(val):
+        if isinstance(val, time_type):
+            return val  # Already a time object
+        elif pd.isna(val):
+            return None
+        else:
+            # Try to parse as datetime and extract time
+            try:
+                return pd.to_datetime(val).time()
+            except:
+                return None
+
+    combined_df['time'] = combined_df['time'].apply(safe_time_convert)
 
     # Drop rows where date or time could not be parsed
     combined_df.dropna(subset=['date', 'time'], inplace=True)
