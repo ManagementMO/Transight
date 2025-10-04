@@ -4,23 +4,19 @@ import glob
 
 # --- Configuration ---
 
-# --- NEW: Robust Path Handling ---
-# This builds the correct path to your data folder regardless of where you run the script from.
-# It starts from the script's location, goes up one level ('..') from 'backend' to 'Transight',
-# then goes into the 'data' and 'ttc_delay_data' folders.
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-DATA_DIRECTORY = os.path.join(SCRIPT_DIR, '..', 'data', 'ttc_delay_data')
+# Assumes this script is in a 'scripts' or 'backend' folder
+DATA_DIRECTORY = os.path.join(SCRIPT_DIR, '..', 'data', 'ttc_delay_data') 
 
-# The name of the final combined CSV file.
-OUTPUT_FILE = 'concatenated_ttc_bus_delays.csv'
+# <<< IMPROVEMENT 1: Output to Parquet for speed and efficiency >>>
+# You can still output a CSV for human readability if you want.
+OUTPUT_PARQUET_FILE = 'ttc_bus_delays_master.parquet'
+OUTPUT_CSV_FILE = 'ttc_bus_delays_master.csv'
 
 # --- Main Script ---
 
 def clean_column_names(df):
-    """
-    Standardizes column names by converting them to lowercase, 
-    stripping whitespace, and replacing spaces/hyphens with underscores.
-    """
+    """Standardizes column names."""
     cleaned_columns = {}
     for col in df.columns:
         new_col = col.strip().lower().replace(' ', '_').replace('-', '_')
@@ -30,37 +26,33 @@ def clean_column_names(df):
 
 def process_files():
     """
-    Finds, reads, standardizes, and concatenates all Excel files
-    in the specified data directory.
+    Finds, reads, standardizes, and concatenates all Excel files,
+    then saves them in an efficient format.
     """
-    # --- FIX 1: Look for .xlsx files instead of .csv ---
     excel_files = glob.glob(os.path.join(DATA_DIRECTORY, '*.xlsx'))
-
     if not excel_files:
         print(f"Error: No XLSX files found in the directory: '{DATA_DIRECTORY}'")
-        print("Please make sure your folder structure is correct and files are present.")
         return
         
-    # Sort files for more logical processing order
     excel_files.sort()
-
-    print(f"Found {len(excel_files)} files to process in '{DATA_DIRECTORY}'. Starting...")
+    print(f"Found {len(excel_files)} files to process...")
 
     all_dataframes = []
-
-    # Define the final, standardized column names
+    
+    # Final column order we want
     final_columns = [
         'date', 'route', 'time', 'day', 'location', 'incident', 
         'min_delay', 'min_gap', 'direction', 'vehicle'
     ]
 
-    # Mapping for inconsistent column names
+    # <<< IMPROVEMENT 2: Map expects already-cleaned names for robustness >>>
+    # This map will fix inconsistencies AFTER the initial cleaning.
     column_name_map = {
-        'report_date': 'date',
-        'min__delay': 'min_delay',
-        'delay' : 'min_delay',
-        'min__gap': 'min_gap',
-        'gap': 'min_gap'
+        'report_date': 'date',     # From 'Report Date'
+        'min__delay': 'min_delay', # From 'Min - Delay'
+        'delay': 'min_delay',      # From 'Delay'
+        'min__gap': 'min_gap',     # From 'Min - Gap'
+        'gap': 'min_gap'           # From 'Gap'
     }
 
     for i, filepath in enumerate(excel_files):
@@ -68,55 +60,79 @@ def process_files():
         print(f"Processing file {i+1}/{len(excel_files)}: {filename}")
         
         try:
-            # --- FIX 2: Use pd.read_excel() to read the file ---
             df = pd.read_excel(filepath)
             
+            # 1. Clean names first
             df = clean_column_names(df)
+            
+            # 2. Rename based on cleaned names
             df = df.rename(columns=column_name_map)
 
+            # 3. Add any missing columns from our ideal set
             for col in final_columns:
                 if col not in df.columns:
-                    print(f"  - Warning: Column '{col}' not found. Adding it as an empty column.")
                     df[col] = None 
             
+            # 4. Enforce column order and select only the columns we need
             df = df[final_columns]
             all_dataframes.append(df)
 
         except Exception as e:
-            print(f"  - ERROR: Could not process file {filename}. Reason: {e}")
-            print("  - Skipping this file.")
+            print(f"  - ERROR processing {filename}: {e}. Skipping file.")
 
     if not all_dataframes:
-        print("\nNo dataframes were successfully processed. Exiting.")
+        print("\nNo dataframes were processed. Exiting.")
         return
 
-    print("\nConcatenating all processed files...")
+    print("\nConcatenating all dataframes...")
     combined_df = pd.concat(all_dataframes, ignore_index=True)
 
-    print("Performing final data type conversions...")
-    combined_df['date'] = pd.to_datetime(combined_df['date'], errors='coerce')
+    print("Performing final cleaning and feature engineering...")
+    
+    # <<< IMPROVEMENT 3: Create a single, powerful datetime column >>>
+    # First, handle potential non-string or None values in date/time columns
+    combined_df['date'] = pd.to_datetime(combined_df['date'], errors='coerce').dt.date
+    combined_df['time'] = pd.to_datetime(combined_df['time'], format='%H:%M', errors='coerce').dt.time
+
+    # Drop rows where date or time could not be parsed
+    combined_df.dropna(subset=['date', 'time'], inplace=True)
+    
+    # Combine them into the master datetime column
+    combined_df['datetime'] = combined_df.apply(lambda row: pd.Timestamp.combine(row['date'], row['time']), axis=1)
+
+    # Convert numeric columns, coercing errors
     combined_df['min_delay'] = pd.to_numeric(combined_df['min_delay'], errors='coerce')
     combined_df['min_gap'] = pd.to_numeric(combined_df['min_gap'], errors='coerce')
+
+    # Keep route as string since it contains alphanumeric values (e.g., 'A242')
+    combined_df['route'] = combined_df['route'].astype(str)
     
-    print("Sorting final dataset by date...")
-    combined_df.dropna(subset=['date'], inplace=True)
-    combined_df.sort_values(by='date', inplace=True)
+    # Sort chronologically, which is great practice
+    combined_df.sort_values(by='datetime', inplace=True)
+
+    # Now we can drop the original redundant columns
+    combined_df = combined_df.drop(columns=['date', 'time'])
     
     try:
-        # We will save the combined file in the `Transight/backend/` folder, alongside the script.
-        output_path = os.path.join(SCRIPT_DIR, OUTPUT_FILE)
-        combined_df.to_csv(output_path, index=False)
+        # Define output paths relative to the script location
+        parquet_path = os.path.join(SCRIPT_DIR, OUTPUT_PARQUET_FILE)
+        csv_path = os.path.join(SCRIPT_DIR, OUTPUT_CSV_FILE)
         
-        print("\n------------------------------------------------------")
-        print("                  SUCCESS!                          ")
-        print("------------------------------------------------------")
-        print(f"All files have been combined into: {output_path}")
-        print(f"Total rows in combined file: {len(combined_df)}")
-        print("\nFirst 5 rows of the chronologically sorted data:")
+        # Save to Parquet (for your code)
+        combined_df.to_parquet(parquet_path, index=False)
+        
+        # Save to CSV (for manual inspection)
+        combined_df.to_csv(csv_path, index=False)
+        
+        print("\n---------------- SUCCESS ----------------")
+        print(f"Saved master Parquet file to: {parquet_path}")
+        print(f"Saved master CSV file to:     {csv_path}")
+        print(f"Total rows in final dataset: {len(combined_df)}")
+        print("\nFinal data schema and first 5 rows:")
+        print(combined_df.info())
         print(combined_df.head())
     except Exception as e:
-        print(f"\nERROR: Could not save the final CSV file. Reason: {e}")
-
+        print(f"\nERROR: Could not save the final files. Reason: {e}")
 
 if __name__ == "__main__":
     process_files()
