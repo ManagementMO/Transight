@@ -5,7 +5,8 @@ import re
 # --- Configuration ---
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 INPUT_DATA_FILE = os.path.join(SCRIPT_DIR, 'ttc_bus_delays_master.csv')
-OUTPUT_FILE = os.path.join(SCRIPT_DIR, 'geocoded_delays.csv')
+OUTPUT_CSV_FILE = os.path.join(SCRIPT_DIR, 'geocoded_delays.csv')
+OUTPUT_PARQUET_FILE = os.path.join(SCRIPT_DIR, 'geocoded_delays.parquet')
 STOPS_FILE = os.path.join(SCRIPT_DIR, 'stops.txt')
 
 # --- Helper Functions ---
@@ -230,8 +231,11 @@ if __name__ == "__main__":
     print(f"Dropped (no match):      {dropped_count}")
 
     # Save only successfully geocoded data
-    df_geocoded.to_csv(OUTPUT_FILE, index=False)
-    print(f"\n✓ Geocoded data saved to '{OUTPUT_FILE}'")
+    df_geocoded.to_csv(OUTPUT_CSV_FILE, index=False)
+    df_geocoded.to_parquet(OUTPUT_PARQUET_FILE, index=False)
+    print(f"\n✓ Geocoded data saved to:")
+    print(f"  - CSV:     {OUTPUT_CSV_FILE}")
+    print(f"  - Parquet: {OUTPUT_PARQUET_FILE}")
 
     # Show sample of results
     if len(df_geocoded) > 0:
