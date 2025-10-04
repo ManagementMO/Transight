@@ -36,9 +36,9 @@ function App() {
     const loadHistoricalData = async () => {
       setIsLoading(true);
       try {
-        // Get 12 hour window of data to show many more incidents
-        const start = new Date(currentTime.getTime() - 6 * 60 * 60 * 1000); // 6 hours before
-        const end = new Date(currentTime.getTime() + 6 * 60 * 60 * 1000); // 6 hours after
+        // Get 24 hour window of data to show maximum incidents across Toronto
+        const start = new Date(currentTime.getTime() - 12 * 60 * 60 * 1000); // 12 hours before
+        const end = new Date(currentTime.getTime() + 12 * 60 * 60 * 1000); // 12 hours after
 
         console.log('📡 Fetching historical data:', {
           start: start.toISOString(),
@@ -48,7 +48,7 @@ function App() {
         const data = await fetchHistoricalData(
           start.toISOString(),
           end.toISOString(),
-          2 // min delay threshold (reduced to show even more incidents)
+          0 // Show ALL delays (even 0 min delays to maximize hotspots)
         );
 
         console.log('✅ Historical data loaded:', data.total_incidents, 'incidents');

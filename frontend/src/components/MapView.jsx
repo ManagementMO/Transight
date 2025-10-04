@@ -118,8 +118,8 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
           'interpolate',
           ['linear'],
           ['zoom'],
-          0, 1,
-          15, 3
+          0, 0.8,
+          15, 2.5
         ],
         'heatmap-color': [
           'interpolate',
@@ -136,8 +136,8 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
           'interpolate',
           ['linear'],
           ['zoom'],
-          0, 2,
-          15, 30
+          0, 4,
+          15, 40
         ],
         'heatmap-opacity': 0.8
       }
@@ -154,10 +154,23 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
         'circle-radius': [
           'interpolate',
           ['linear'],
-          ['get', 'delay'],
-          0, 5,
-          15, 8,
-          30, 14
+          ['zoom'],
+          8, [
+            'interpolate',
+            ['linear'],
+            ['get', 'delay'],
+            0, 3,
+            15, 6,
+            30, 10
+          ],
+          14, [
+            'interpolate',
+            ['linear'],
+            ['get', 'delay'],
+            0, 6,
+            15, 10,
+            30, 16
+          ]
         ],
         'circle-color': [
           'interpolate',
