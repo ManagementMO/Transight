@@ -22,6 +22,21 @@
   100% { opacity: 1; }
 }
 
+@keyframes scaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -60,14 +75,35 @@ html, body, #root {
 }
 
 .mapboxgl-popup-close-button {
-  font-size: 20px !important;
-  padding: 8px !important;
+  font-size: 22px !important;
+  padding: 10px !important;
   color: #6B7280 !important;
+  border-radius: 6px !important;
+  transition: all 0.2s !important;
 }
 
 .mapboxgl-popup-close-button:hover {
   background-color: #F3F4F6 !important;
   color: #111827 !important;
+  transform: scale(1.1) !important;
+}
+
+/* Sidebar custom scrollbar */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 
 /* Custom scrollbar */

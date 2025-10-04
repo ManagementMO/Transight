@@ -6,6 +6,7 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
   const mapContainer = useRef(null);
   const map = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const currentPopup = useRef(null);
 
   // Initialize map
   useEffect(() => {
@@ -67,16 +68,31 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       }))
     };
 
-    // Remove existing layers and source (proper cleanup order)
-    if (map.current.getLayer('delay-points')) {
-      map.current.removeLayer('delay-points');
-    }
-    if (map.current.getLayer('delay-heatmap')) {
-      map.current.removeLayer('delay-heatmap');
-    }
-    if (map.current.getSource('delays')) {
-      map.current.removeSource('delays');
-    }
+    // Smooth fade-out animation before updating
+    const fadeOutLayers = () => {
+      if (map.current.getLayer('delay-points')) {
+        map.current.setPaintProperty('delay-points', 'circle-opacity', 0);
+      }
+      if (map.current.getLayer('delay-heatmap')) {
+        map.current.setPaintProperty('delay-heatmap', 'heatmap-opacity', 0);
+      }
+    };
+
+    // Fade out existing layers
+    fadeOutLayers();
+
+    // Wait for fade animation, then update layers
+    setTimeout(() => {
+      // Remove existing layers and source (proper cleanup order)
+      if (map.current.getLayer('delay-points')) {
+        map.current.removeLayer('delay-points');
+      }
+      if (map.current.getLayer('delay-heatmap')) {
+        map.current.removeLayer('delay-heatmap');
+      }
+      if (map.current.getSource('delays')) {
+        map.current.removeSource('delays');
+      }
 
     // Add source
     map.current.addSource('delays', {
@@ -84,12 +100,13 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       data: geojson
     });
 
-    // Add heatmap layer with vibrant colors
+    // Add heatmap layer with vibrant colors and transitions
     map.current.addLayer({
       id: 'delay-heatmap',
       type: 'heatmap',
       source: 'delays',
       paint: {
+        'heatmap-opacity-transition': {duration: 500},
         'heatmap-weight': [
           'interpolate',
           ['linear'],
@@ -126,12 +143,14 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       }
     });
 
-    // Add points layer for interactivity with vibrant colors
+    // Add points layer for interactivity with vibrant colors and transitions
     map.current.addLayer({
       id: 'delay-points',
       type: 'circle',
       source: 'delays',
       paint: {
+        'circle-opacity-transition': {duration: 500},
+        'circle-stroke-opacity-transition': {duration: 500},
         'circle-radius': [
           'interpolate',
           ['linear'],
@@ -149,22 +168,41 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
           20, '#f97316',  // Vibrant orange for high delays
           30, '#dc2626'   // Vibrant red for severe delays
         ],
-        'circle-opacity': 0.9,
+        'circle-opacity': 0, // Start invisible for fade-in
         'circle-stroke-width': 2,
         'circle-stroke-color': '#ffffff',
-        'circle-stroke-opacity': 1
+        'circle-stroke-opacity': 0 // Start invisible for fade-in
       }
     });
+
+      // Smooth fade-in animation
+      setTimeout(() => {
+        if (map.current.getLayer('delay-heatmap')) {
+          map.current.setPaintProperty('delay-heatmap', 'heatmap-opacity', 0.8);
+        }
+        if (map.current.getLayer('delay-points')) {
+          map.current.setPaintProperty('delay-points', 'circle-opacity', 0.9);
+          map.current.setPaintProperty('delay-points', 'circle-stroke-opacity', 1);
+        }
+      }, 50);
+
+    }, 300); // Wait for fade-out before rebuilding layers
 
     // Add click handler for delay points
     const clickHandler = (e) => {
       const feature = e.features[0];
       const { route, delay, incident, location } = feature.properties;
 
+      // Close existing popup if any
+      if (currentPopup.current) {
+        currentPopup.current.remove();
+      }
+
       // Create popup with better styling
-      new mapboxgl.Popup({
+      const popup = new mapboxgl.Popup({
         closeButton: true,
-        closeOnClick: false
+        closeOnClick: false,
+        className: 'delay-popup'
       })
         .setLngLat(e.lngLat)
         .setHTML(`
@@ -176,6 +214,14 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
           </div>
         `)
         .addTo(map.current);
+
+      // Store current popup reference
+      currentPopup.current = popup;
+
+      // Clean up reference when popup is closed
+      popup.on('close', () => {
+        currentPopup.current = null;
+      });
 
       // Trigger route selection callback
       if (onRouteClick) {
@@ -209,9 +255,12 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       
       {/* Loading indicator */}
       {isLoading && (
-        <div className="absolute top-4 left-4 bg-white rounded-lg shadow-soft px-4 py-2 flex items-center space-x-2">
-          <div className="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
-          <span className="text-sm text-gray-600">Loading data...</span>
+        <div className="absolute top-4 left-4 bg-white rounded-xl shadow-soft-lg px-5 py-3 flex items-center space-x-3 animate-fade-in border border-blue-100">
+          <div className="relative">
+            <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+            <div className="absolute inset-0 w-3 h-3 bg-blue-400 rounded-full animate-ping"></div>
+          </div>
+          <span className="text-sm text-gray-700 font-medium">Updating timeline...</span>
         </div>
       )}
 

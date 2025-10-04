@@ -1,0 +1,19 @@
+# FastAPI Backend Requirements
+# TTC Delay Prediction API
+
+# Web Framework
+fastapi==0.118.0
+uvicorn==0.37.0
+pydantic==2.10.6
+
+# Data Processing
+pandas==2.3.3
+numpy==2.3.0
+
+# Machine Learning
+lightgbm==4.6.0
+scikit-learn==1.6.1
+joblib==1.4.2
+
+# Utilities
+python-dateutil==2.9.0.post0

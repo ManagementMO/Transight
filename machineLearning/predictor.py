@@ -78,13 +78,19 @@ class DelayPredictor:
         if self.historical_data is None:
             raise ValueError("No historical data available")
 
-        start = pd.to_datetime(start_datetime)
-        end = pd.to_datetime(end_datetime)
+        start = pd.to_datetime(start_datetime, utc=True).tz_localize(None)
+        end = pd.to_datetime(end_datetime, utc=True).tz_localize(None)
+
+        # Ensure datetime column is timezone-naive
+        if self.historical_data['datetime'].dt.tz is not None:
+            datetime_col = self.historical_data['datetime'].dt.tz_localize(None)
+        else:
+            datetime_col = self.historical_data['datetime']
 
         # Filter by time range and minimum delay
         mask = (
-            (self.historical_data['datetime'] >= start) &
-            (self.historical_data['datetime'] <= end) &
+            (datetime_col >= start) &
+            (datetime_col <= end) &
             (self.historical_data['min_delay'] >= min_delay_threshold)
         )
 

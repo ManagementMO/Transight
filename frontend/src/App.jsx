@@ -16,12 +16,14 @@ function App() {
   useEffect(() => {
     const loadTimeRange = async () => {
       try {
+        console.log('📡 Fetching time range...');
         const range = await fetchTimeRange();
+        console.log('✅ Time range loaded:', range);
         setTimeRange(range);
         // Set initial time to most recent data
         setCurrentTime(new Date(range.end));
       } catch (error) {
-        console.error('Failed to load time range:', error);
+        console.error('❌ Failed to load time range:', error);
       }
     };
     loadTimeRange();
@@ -29,31 +31,37 @@ function App() {
 
   // Load historical data when time changes
   useEffect(() => {
-    if (!currentTime) return;
+    if (!currentTime || !timeRange) return;
 
     const loadHistoricalData = async () => {
       setIsLoading(true);
       try {
-        // Get 1 hour window of data
-        const start = new Date(currentTime);
-        const end = new Date(currentTime.getTime() + 60 * 60 * 1000);
+        // Get 12 hour window of data to show many more incidents
+        const start = new Date(currentTime.getTime() - 6 * 60 * 60 * 1000); // 6 hours before
+        const end = new Date(currentTime.getTime() + 6 * 60 * 60 * 1000); // 6 hours after
+
+        console.log('📡 Fetching historical data:', {
+          start: start.toISOString(),
+          end: end.toISOString()
+        });
 
         const data = await fetchHistoricalData(
           start.toISOString(),
           end.toISOString(),
-          5 // min delay threshold
+          2 // min delay threshold (reduced to show even more incidents)
         );
 
+        console.log('✅ Historical data loaded:', data.total_incidents, 'incidents');
         setHistoricalData(data);
       } catch (error) {
-        console.error('Failed to load historical data:', error);
+        console.error('❌ Failed to load historical data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadHistoricalData();
-  }, [currentTime]);
+  }, [currentTime, timeRange]);
 
   const handleRouteClick = (route) => {
     setSelectedRoute(route);
