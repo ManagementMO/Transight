@@ -90,7 +90,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://transight.onrender.com",  # Production frontend
+        "https://transight.onrender.com",  # Production frontend (Render)
+        "https://transight.us",             # Production frontend (Custom domain)
+        "https://www.transight.us",         # Production frontend (Custom domain with www)
         "http://localhost:5173",            # Local development (Vite)
         "http://localhost:3000",            # Local development (alternative)
         "http://localhost",                 # Local development (Docker)
