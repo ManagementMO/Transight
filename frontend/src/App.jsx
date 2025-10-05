@@ -69,6 +69,9 @@ function App() {
 
   const handleCloseSidebar = () => {
     setSelectedRoute(null);
+
+    // Trigger a custom event to notify map that sidebar was closed
+    window.dispatchEvent(new CustomEvent('sidebarClosed'));
   };
 
   const handleStationSelect = (stationData) => {
@@ -96,7 +99,6 @@ function App() {
         <MapView
           onRouteClick={handleRouteClick}
           historicalData={historicalData}
-          currentTime={currentTime}
           isLoading={isLoading}
           onStationSelect={handleStationSelect}
         />
