@@ -145,15 +145,14 @@ def engineer_features(df):
     rare_incidents = incident_counts[incident_counts < rare_threshold].index
     df_feat['incident_grouped'] = df_feat['incident'].replace(rare_incidents, 'Other')
 
-    # Target encoding for incident (mean delay per incident type)
-    incident_mean_delay = df_feat.groupby('incident_grouped')['min_delay'].transform('mean')
-    df_feat['incident_avg_delay'] = incident_mean_delay
+    # REMOVED: Target encoding (was causing data leakage)
+    # The model should learn incident severity from patterns, not memorized averages
 
     # One-hot encode incident types
     incident_dummies = pd.get_dummies(df_feat['incident_grouped'], prefix='incident')
     df_feat = pd.concat([df_feat, incident_dummies], axis=1)
 
-    print(f"   Created {len(incident_dummies.columns) + 1} incident features")
+    print(f"   Created {len(incident_dummies.columns)} incident features")
 
     # -------------------------------------------------------------------------
     # 5. DIRECTION FEATURES
