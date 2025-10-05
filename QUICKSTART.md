@@ -14,7 +14,7 @@ cd /root/Transight/machineLearning
 pip install fastapi uvicorn pandas scikit-learn lightgbm python-dateutil
 
 # Start the API server (port 8000)
-python api.py
+python app.py
 ```
 
 **Backend will be available at:** `http://localhost:8000`
