@@ -6,11 +6,11 @@ Provides REST API endpoints for:
 2. Scenario-based predictions (what-if analysis)
 """
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Path
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import uvicorn
 
 from predictor import DelayPredictor
@@ -427,6 +427,197 @@ async def get_incident_types():
         "incident_types": predictor.incident_types,
         "total": len(predictor.incident_types)
     }
+
+
+@app.get("/api/analytics/overview", tags=["Analytics"])
+async def get_analytics_overview():
+    """
+    Get comprehensive analytics data for dashboard.
+
+    Returns:
+        - Most delayed routes
+        - Delay patterns by hour
+        - Incident type breakdown
+        - Delays by day of week
+    """
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="Predictor not initialized")
+
+    if predictor.historical_data is None:
+        raise HTTPException(status_code=404, detail="No historical data available")
+
+    try:
+        import pandas as pd
+        data = predictor.historical_data.copy()
+
+        # 1. Top 10 most delayed routes (average delay)
+        route_delays = data.groupby('route')['min_delay'].agg(['mean', 'count']).reset_index()
+        route_delays = route_delays[route_delays['count'] >= 10]  # Filter routes with < 10 incidents
+        route_delays = route_delays.nlargest(10, 'mean')
+        top_routes = [
+            {"route": str(row['route']), "avgDelay": round(row['mean'], 1), "incidents": int(row['count'])}
+            for _, row in route_delays.iterrows()
+        ]
+
+        # 2. Delay patterns by hour of day
+        data['hour'] = pd.to_datetime(data['datetime']).dt.hour
+        hourly_delays = data.groupby('hour')['min_delay'].mean().reset_index()
+        delay_by_hour = [
+            {"hour": int(row['hour']), "avgDelay": round(row['min_delay'], 1)}
+            for _, row in hourly_delays.iterrows()
+        ]
+
+        # 3. Incident type breakdown (top 10)
+        incident_counts = data['incident'].value_counts().head(10)
+        incident_breakdown = [
+            {"type": incident, "count": int(count), "percentage": round((count / len(data)) * 100, 1)}
+            for incident, count in incident_counts.items()
+        ]
+
+        # 4. Delays by day of week
+        data['day_of_week'] = pd.to_datetime(data['datetime']).dt.dayofweek
+        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        dow_delays = data.groupby('day_of_week')['min_delay'].mean().reset_index()
+        delay_by_day = [
+            {"day": day_names[int(row['day_of_week'])], "avgDelay": round(row['min_delay'], 1)}
+            for _, row in dow_delays.iterrows()
+        ]
+
+        return {
+            "topDelayedRoutes": top_routes,
+            "delayByHour": delay_by_hour,
+            "incidentBreakdown": incident_breakdown,
+            "delayByDayOfWeek": delay_by_day,
+            "totalIncidents": len(data),
+            "avgDelay": round(data['min_delay'].mean(), 1)
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analytics error: {str(e)}")
+
+
+@app.get("/api/stations/search", tags=["Search"])
+async def search_stations(
+    query: str = Query(..., min_length=1, description="Search query for station/location name")
+):
+    """
+    Search for stations/locations with autocomplete suggestions.
+
+    Args:
+        query: Search string (minimum 1 character)
+
+    Returns:
+        List of matching stations with their coordinates and routes
+
+    Example:
+        GET /api/stations/search?query=kennedy
+    """
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="Predictor not initialized")
+
+    if predictor.historical_data is None:
+        raise HTTPException(status_code=404, detail="No historical data available")
+
+    try:
+        # Get unique locations from historical data
+        locations = predictor.historical_data[['location', 'latitude', 'longitude', 'route']].copy()
+
+        # Filter by query (case-insensitive)
+        query_lower = query.lower()
+        mask = locations['location'].str.lower().str.contains(query_lower, na=False)
+        matches = locations[mask]
+
+        # Group by location and aggregate routes
+        grouped = matches.groupby(['location', 'latitude', 'longitude']).agg({
+            'route': lambda x: sorted([str(r) for r in set(x) if r is not None and str(r) != 'nan'])
+        }).reset_index()
+
+        # Limit to top 10 results
+        results = []
+        for _, row in grouped.head(10).iterrows():
+            results.append({
+                "location": row['location'],
+                "lat": float(row['latitude']),
+                "lon": float(row['longitude']),
+                "routes": [str(r) for r in row['route']]
+            })
+
+        return {
+            "query": query,
+            "results": results,
+            "total": len(results)
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Search error: {str(e)}")
+
+
+@app.get("/api/stations/{location}/predict", tags=["Search"])
+async def get_station_current_prediction(
+    location: str = Path(..., description="Station/location name"),
+    route: str = Query("36", description="Route number (optional)")
+):
+    """
+    Get current delay predictions for a specific station.
+
+    Args:
+        location: Station/location name
+        route: Bus route number
+
+    Returns:
+        Current delay predictions for all incident scenarios
+
+    Example:
+        GET /api/stations/KENNEDY%20STATION/predict?route=36
+    """
+    if predictor is None:
+        raise HTTPException(status_code=503, detail="Predictor not initialized")
+
+    if predictor.historical_data is None:
+        raise HTTPException(status_code=404, detail="No historical data available")
+
+    try:
+        # Find the station in historical data
+        location_data = predictor.historical_data[
+            predictor.historical_data['location'].str.upper() == location.upper()
+        ]
+
+        if len(location_data) == 0:
+            raise HTTPException(status_code=404, detail=f"Location '{location}' not found")
+
+        # Get coordinates (use median to handle slight variations)
+        lat = float(location_data['latitude'].median())
+        lon = float(location_data['longitude'].median())
+
+        # Get current time
+        current_time = datetime.now()
+
+        # Get predictions for all incident types
+        predictions_df = predictor.predict_all_incident_scenarios(
+            current_time, lat, lon, route
+        )
+
+        # Convert to response format
+        predictions = [
+            {
+                "incident_type": row['incident_type'],
+                "predicted_delay_minutes": round(row['predicted_delay_minutes'], 1)
+            }
+            for _, row in predictions_df.iterrows()
+        ]
+
+        return {
+            "location": location,
+            "coordinates": {"lat": lat, "lon": lon},
+            "route": route,
+            "timestamp": current_time.isoformat(),
+            "predictions": predictions
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Prediction error: {str(e)}")
 
 
 # ============================================================================

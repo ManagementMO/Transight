@@ -17,3 +17,6 @@ joblib==1.4.2
 
 # Utilities
 python-dateutil==2.9.0.post0
+
+pyarrow
+fastparquet

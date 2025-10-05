@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import SearchBar from './SearchBar';
 
-export default function MapView({ onRouteClick, historicalData, currentTime, isLoading }) {
+export default function MapView({ onRouteClick, historicalData, isLoading, onStationSelect }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const currentPopup = useRef(null);
+  const hoverPopupRef = useRef(null);
+  const justClosedPopup = useRef(false);
+  const hoverTimeoutRef = useRef(null);
 
   // Initialize map
   useEffect(() => {
@@ -33,8 +37,27 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       setMapLoaded(true);
     });
 
+    // Listen for sidebar close event
+    const handleSidebarClose = () => {
+      justClosedPopup.current = true;
+
+      // Remove any hover popup
+      if (hoverPopupRef.current) {
+        hoverPopupRef.current.remove();
+        hoverPopupRef.current = null;
+      }
+
+      // Reset flag after a longer delay to ensure user has moved mouse
+      setTimeout(() => {
+        justClosedPopup.current = false;
+      }, 500);
+    };
+
+    window.addEventListener('sidebarClosed', handleSidebarClose);
+
     // Cleanup on unmount
     return () => {
+      window.removeEventListener('sidebarClosed', handleSidebarClose);
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -206,10 +229,31 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       const feature = e.features[0];
       const { route, delay, incident, location } = feature.properties;
 
-      // Close existing popup if any
+      // Clear any existing timeout
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+
+      // Set flag to prevent hover popup from appearing
+      justClosedPopup.current = true;
+
+      // Remove hover popup when clicking
+      if (hoverPopupRef.current) {
+        hoverPopupRef.current.remove();
+        hoverPopupRef.current = null;
+      }
+
+      // Close existing click popup if any
       if (currentPopup.current) {
         currentPopup.current.remove();
       }
+
+      // Reset the flag after delay to allow hover again
+      hoverTimeoutRef.current = setTimeout(() => {
+        justClosedPopup.current = false;
+        hoverTimeoutRef.current = null;
+      }, 1000);
 
       // Create popup with better styling
       const popup = new mapboxgl.Popup({
@@ -231,9 +275,21 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
       // Store current popup reference
       currentPopup.current = popup;
 
-      // Clean up reference when popup is closed
+      // Clean up reference and hover popup when popup is closed
       popup.on('close', () => {
         currentPopup.current = null;
+        justClosedPopup.current = true;
+
+        // Also remove any lingering hover popup
+        if (hoverPopupRef.current) {
+          hoverPopupRef.current.remove();
+          hoverPopupRef.current = null;
+        }
+
+        // Reset the flag after a longer delay
+        setTimeout(() => {
+          justClosedPopup.current = false;
+        }, 500);
       });
 
       // Trigger route selection callback
@@ -251,13 +307,58 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
 
     map.current.on('click', 'delay-points', clickHandler);
 
-    // Change cursor on hover
-    map.current.on('mouseenter', 'delay-points', () => {
+    // Hover popup for delay points
+    map.current.on('mouseenter', 'delay-points', (e) => {
+      // Change cursor
       map.current.getCanvas().style.cursor = 'pointer';
+
+      // Don't show hover popup if click popup is open OR just closed
+      if (currentPopup.current || justClosedPopup.current) {
+        return;
+      }
+
+      // Remove existing hover popup if any
+      if (hoverPopupRef.current) {
+        hoverPopupRef.current.remove();
+        hoverPopupRef.current = null;
+      }
+
+      // Get feature data
+      const feature = e.features[0];
+      const { route, delay, incident, location } = feature.properties;
+      const coordinates = feature.geometry.coordinates.slice();
+
+      // Create hover popup - positioned with arrow pointing to the point
+      const hoverPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        className: 'delay-popup-hover',
+        anchor: 'bottom',  // Arrow points down to the point
+        offset: [0, -15]   // Offset upward from the point
+      })
+        .setLngLat(coordinates)
+        .setHTML(`
+          <div style="padding: 10px; font-family: Inter, sans-serif;">
+            <h3 style="font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #111827;">Route ${route}</h3>
+            <p style="font-size: 12px; color: #6B7280; margin: 3px 0;"><strong>Delay:</strong> ${delay} min</p>
+            <p style="font-size: 12px; color: #6B7280; margin: 3px 0;"><strong>Incident:</strong> ${incident}</p>
+            <p style="font-size: 12px; color: #6B7280; margin: 3px 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><strong>Location:</strong> ${location}</p>
+          </div>
+        `)
+        .addTo(map.current);
+
+      // Store in ref
+      hoverPopupRef.current = hoverPopup;
     });
 
     map.current.on('mouseleave', 'delay-points', () => {
       map.current.getCanvas().style.cursor = '';
+
+      // Remove hover popup
+      if (hoverPopupRef.current) {
+        hoverPopupRef.current.remove();
+        hoverPopupRef.current = null;
+      }
     });
 
   }, [mapLoaded, historicalData, onRouteClick]);
@@ -265,10 +366,15 @@ export default function MapView({ onRouteClick, historicalData, currentTime, isL
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="absolute top-0 bottom-0 left-0 right-0" />
-      
+
+      {/* Search Bar - Top Right */}
+      <div className="absolute top-4 right-16 z-10">
+        <SearchBar onStationSelect={onStationSelect} />
+      </div>
+
       {/* Loading indicator */}
       {isLoading && (
-        <div className="absolute top-4 left-4 bg-white rounded-xl shadow-soft-lg px-5 py-3 flex items-center space-x-3 animate-fade-in border border-blue-100">
+        <div className="absolute top-4 left-4 bg-white rounded-xl shadow-soft-lg px-5 py-3 flex items-center space-x-3 animate-fade-in border border-blue-100 z-10">
           <div className="relative">
             <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
             <div className="absolute inset-0 w-3 h-3 bg-blue-400 rounded-full animate-ping"></div>

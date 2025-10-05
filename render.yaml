@@ -1,0 +1,27 @@
+services:
+  # Backend - FastAPI ML Service
+  - type: web
+    name: ttc-delay-backend
+    env: docker
+    region: oregon
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: 8000
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # Frontend - React App
+  - type: web
+    name: ttc-delay-frontend
+    env: docker
+    region: oregon
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://transight-backend.onrender.com
+      - key: VITE_MAPBOX_TOKEN
+        value: pk.eyJ1IjoibWFwYm94bW8xMjMiLCJhIjoiY21jcXN5dXdqMDFrODJqcTBhcnppb3QzMSJ9.do-_5cjmbfnW2o-FyMofvA
+    autoDeploy: true
