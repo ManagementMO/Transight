@@ -89,7 +89,12 @@ app = FastAPI(
 # CORS middleware (allow frontend to call this API)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend domain
+    allow_origins=[
+        "https://transight.onrender.com",  # Production frontend
+        "http://localhost:5173",            # Local development (Vite)
+        "http://localhost:3000",            # Local development (alternative)
+        "http://localhost",                 # Local development (Docker)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

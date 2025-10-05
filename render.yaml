@@ -1,8 +1,8 @@
 services:
   # Backend - FastAPI ML Service
   - type: web
-    name: ttc-delay-backend
-    env: docker
+    name: transight-backend
+    runtime: docker
     region: oregon
     dockerfilePath: ./Dockerfile.backend
     dockerContext: .
@@ -14,8 +14,8 @@ services:
 
   # Frontend - React App
   - type: web
-    name: ttc-delay-frontend
-    env: docker
+    name: transight
+    runtime: docker
     region: oregon
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
