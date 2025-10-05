@@ -22,11 +22,19 @@ export default function Analytics() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
+        console.log('Fetching analytics data...');
         const response = await fetch('http://localhost:8000/api/analytics/overview');
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const analyticsData = await response.json();
+        console.log('Analytics data loaded:', analyticsData);
         setData(analyticsData);
       } catch (error) {
         console.error('Failed to load analytics:', error);
+        alert(`Failed to load analytics: ${error.message}\n\nPlease restart the backend API server.`);
       } finally {
         setIsLoading(false);
       }
