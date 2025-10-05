@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { searchStations, fetchStationPredictions } from '../api/api';
 
 export default function SearchBar({ onStationSelect }) {
   const [query, setQuery] = useState('');
@@ -38,8 +39,7 @@ export default function SearchBar({ onStationSelect }) {
     timeoutRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`http://localhost:8000/api/stations/search?query=${encodeURIComponent(query)}`);
-        const data = await response.json();
+        const data = await searchStations(query);
         setResults(data.results || []);
         setIsOpen(true);
       } catch (error) {
@@ -65,10 +65,7 @@ export default function SearchBar({ onStationSelect }) {
     // Fetch predictions for this station
     try {
       const route = station.routes[0] || '36'; // Use first available route
-      const response = await fetch(
-        `http://localhost:8000/api/stations/${encodeURIComponent(station.location)}/predict?route=${route}`
-      );
-      const data = await response.json();
+      const data = await fetchStationPredictions(station.location, route);
 
       // Call parent callback with station data and predictions
       if (onStationSelect) {

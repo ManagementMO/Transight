@@ -1,0 +1,51 @@
+# Backend .dockerignore (when building from root)
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Testing
+.pytest_cache/
+.coverage
+
+# Documentation
+*.md
+docs/
+QUICKSTART.md
+
+# Logs
+*.log
+
+# Backend - only exclude these from backend builds
+backend/
+
+# Don't ignore required data files
+!dataAnalysis/geocoded_delays.parquet
+!machineLearning/ttc_delay_model.joblib
+!machineLearning/feature_importance.csv

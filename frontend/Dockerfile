@@ -9,10 +9,18 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Build argument for API URL
+ARG VITE_API_BASE_URL=https://transight-backend.onrender.com
+ARG VITE_MAPBOX_TOKEN
+
+# Set environment variables for build
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_MAPBOX_TOKEN=$VITE_MAPBOX_TOKEN
 
 # Build the app
 RUN npm run build

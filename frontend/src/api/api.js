@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export const fetchTimeRange = async () => {
   const response = await fetch(`${API_BASE_URL}/api/time-range`);
@@ -23,3 +23,22 @@ export const fetchIncidentTypes = async () => {
   const response = await fetch(`${API_BASE_URL}/api/incident-types`);
   return response.json();
 };
+
+export const searchStations = async (query) => {
+  const response = await fetch(`${API_BASE_URL}/api/stations/search?query=${encodeURIComponent(query)}`);
+  return response.json();
+};
+
+export const fetchStationPredictions = async (location, route) => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/stations/${encodeURIComponent(location)}/predict?route=${route}`
+  );
+  return response.json();
+};
+
+export const fetchAnalytics = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/analytics/overview`);
+  return response.json();
+};
+
+export { API_BASE_URL };

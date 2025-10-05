@@ -14,33 +14,28 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import { fetchAnalytics } from '../api/api';
 
 export default function Analytics() {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
+    const loadAnalytics = async () => {
       try {
         console.log('Fetching analytics data...');
-        const response = await fetch('http://localhost:8000/api/analytics/overview');
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const analyticsData = await response.json();
+        const analyticsData = await fetchAnalytics();
         console.log('Analytics data loaded:', analyticsData);
         setData(analyticsData);
       } catch (error) {
         console.error('Failed to load analytics:', error);
-        alert(`Failed to load analytics: ${error.message}\n\nPlease restart the backend API server.`);
+        alert(`Failed to load analytics: ${error.message}\n\nPlease check backend API connection.`);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchAnalytics();
+    loadAnalytics();
   }, []);
 
   if (isLoading) {

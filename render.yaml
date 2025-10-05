@@ -2,56 +2,26 @@ services:
   # Backend - FastAPI ML Service
   - type: web
     name: ttc-delay-backend
-    env: python
+    env: docker
     region: oregon
-    buildCommand: |
-      cd machineLearning
-      pip install -r requirements.txt
-    startCommand: |
-      cd machineLearning
-      python app.py
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: .
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: PORT
         value: 8000
     healthCheckPath: /health
     autoDeploy: true
-    disk:
-      name: model-data
-      mountPath: /app/machineLearning
-      sizeGB: 1
 
   # Frontend - React App
   - type: web
     name: ttc-delay-frontend
-    env: static
+    env: docker
     region: oregon
-    buildCommand: |
-      cd frontend
-      npm install
-      npm run build
-    staticPublishPath: frontend/dist
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: SAMEORIGIN
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /assets/*
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
     envVars:
-      - key: NODE_VERSION
-        value: 18.19.0
       - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: ttc-delay-backend
-          property: host
+        value: https://transight-backend.onrender.com
+      - key: VITE_MAPBOX_TOKEN
+        value: pk.eyJ1IjoibWFwYm94bW8xMjMiLCJhIjoiY21jcXN5dXdqMDFrODJqcTBhcnppb3QzMSJ9.do-_5cjmbfnW2o-FyMofvA
     autoDeploy: true

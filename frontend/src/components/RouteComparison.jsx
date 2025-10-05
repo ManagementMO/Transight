@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { searchStations, fetchStationPredictions } from '../api/api';
 
 export default function RouteComparison({ onClose }) {
   const [routes, setRoutes] = useState([null, null, null]);
@@ -19,8 +20,7 @@ export default function RouteComparison({ onClose }) {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/stations/search?query=${encodeURIComponent(query)}`);
-      const data = await response.json();
+      const data = await searchStations(query);
       setSearchResults(data.results || []);
     } catch (error) {
       console.error('Location search error:', error);
@@ -43,10 +43,7 @@ export default function RouteComparison({ onClose }) {
     setLoading(newLoading);
 
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/stations/${encodeURIComponent(selectedLocation.location)}/predict?route=${routeInput[index]}`
-      );
-      const data = await response.json();
+      const data = await fetchStationPredictions(selectedLocation.location, routeInput[index]);
 
       const newRoutes = [...routes];
       newRoutes[index] = {
